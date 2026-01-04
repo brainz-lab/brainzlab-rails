@@ -50,7 +50,7 @@ module BrainzLab
         # Only start if BrainzLab SDK is configured
         if BrainzLab.configuration&.secret_key
           BrainzLab::Rails.start!
-          ::Rails.logger.info '[BrainzLab::Rails] Instrumentation started'
+          ::Rails.logger.info '[BrainzLab::Rails] Instrumentation started (SDK Rails events delegated)'
         else
           ::Rails.logger.warn '[BrainzLab::Rails] BrainzLab SDK not configured, skipping instrumentation'
         end

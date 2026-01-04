@@ -4,6 +4,11 @@ require 'brainzlab'
 require 'active_support'
 require 'active_support/notifications'
 
+# Tell SDK that we're handling Rails instrumentation via ActiveSupport::Notifications
+# This prevents double-tracking - SDK will only install non-Rails instrumentation
+# (HTTP clients, Redis, GraphQL, etc.)
+BrainzLab.configuration.rails_instrumentation_handled_externally = true
+
 require_relative 'brainzlab/rails/version'
 require_relative 'brainzlab/rails/configuration'
 require_relative 'brainzlab/rails/subscriber'
