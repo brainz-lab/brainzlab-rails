@@ -7,6 +7,13 @@ module BrainzLab
     class Railtie < ::Rails::Railtie
       config.brainzlab_rails = ActiveSupport::OrderedOptions.new
 
+      # Include view helpers in Action View
+      initializer 'brainzlab_rails.view_helpers' do
+        ActiveSupport.on_load(:action_view) do
+          include BrainzLab::Rails::ViewHelpers
+        end
+      end
+
       # Initialize after Rails and BrainzLab SDK are configured
       initializer 'brainzlab_rails.setup', after: :load_config_initializers do |app|
         # Configure from Rails config if provided
@@ -48,11 +55,43 @@ module BrainzLab
       # Start instrumentation when Rails is ready
       config.after_initialize do
         # Only start if BrainzLab SDK is configured
-        if BrainzLab.configuration&.secret_key
+        # Check for either secret_key (legacy) or any product enabled with auto-provisioning
+        if sdk_configured?
           BrainzLab::Rails.start!
           ::Rails.logger.info '[BrainzLab::Rails] Instrumentation started (SDK Rails events delegated)'
         else
           ::Rails.logger.warn '[BrainzLab::Rails] BrainzLab SDK not configured, skipping instrumentation'
+        end
+      end
+
+      def self.sdk_configured?
+        config = BrainzLab.configuration
+        return false unless config
+
+        # Check for secret_key (set directly or by auto-provisioning)
+        return true if config.secret_key.to_s.strip.length.positive?
+
+        # Check if any product can auto-provision
+        # Products with auto_provision + master_key will provision on first use
+        products_with_auto = %i[recall reflex pulse flux]
+        has_auto_provision = products_with_auto.any? do |product|
+          enabled = config.send("#{product}_enabled")
+          can_provision = config.send("#{product}_auto_provision") &&
+                          config.send("#{product}_master_key").to_s.strip.length.positive? &&
+                          config.app_name.to_s.strip.length.positive?
+          enabled && can_provision
+        end
+        return true if has_auto_provision
+
+        # Check for direct API keys
+        direct_keys = {
+          reflex: :reflex_api_key,
+          pulse: :pulse_api_key,
+          flux: :flux_api_key
+        }
+        direct_keys.any? do |product, key_method|
+          config.send("#{product}_enabled") &&
+            config.send(key_method).to_s.strip.length.positive?
         end
       end
 

@@ -108,19 +108,27 @@ module BrainzLab
 
         # Sanitize sensitive data from params
         def sanitize_params(params)
-          return {} unless params.is_a?(Hash)
+          # Handle ActionController::Parameters or Hash
+          hash = if defined?(::ActionController::Parameters) && params.is_a?(::ActionController::Parameters)
+                   params.to_unsafe_h
+                 elsif params.is_a?(Hash)
+                   params
+                 else
+                   return {}
+                 end
 
           sensitive_keys = %w[password password_confirmation token api_key secret]
-          params.transform_values.with_index do |(key, value), _|
-            if sensitive_keys.any? { |sk| key.to_s.downcase.include?(sk) }
-              '[FILTERED]'
-            elsif value.is_a?(Hash)
-              sanitize_params(value)
+          hash.transform_keys(&:to_s).each_with_object({}) do |(key, value), result|
+            if sensitive_keys.any? { |sk| key.downcase.include?(sk) }
+              result[key] = '[FILTERED]'
+            elsif value.is_a?(Hash) || (defined?(::ActionController::Parameters) && value.is_a?(::ActionController::Parameters))
+              result[key] = sanitize_params(value)
             else
-              value
+              result[key] = value
             end
           end
-        rescue StandardError
+        rescue StandardError => e
+          BrainzLab.debug_log("Failed to sanitize params: #{e.message}")
           {}
         end
       end

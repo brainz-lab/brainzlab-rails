@@ -30,6 +30,9 @@ require_relative 'brainzlab/rails/analyzers/n_plus_one_detector'
 require_relative 'brainzlab/rails/analyzers/slow_query_analyzer'
 require_relative 'brainzlab/rails/analyzers/cache_efficiency'
 
+# View helpers for JS SDK integration
+require_relative 'brainzlab/rails/view_helpers'
+
 # Railtie for auto-initialization
 require_relative 'brainzlab/rails/railtie' if defined?(::Rails::Railtie)
 
