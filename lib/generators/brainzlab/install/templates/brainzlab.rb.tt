@@ -1,0 +1,126 @@
+# frozen_string_literal: true
+
+# BrainzLab Rails Configuration
+# =============================
+#
+# Zero-Config Setup:
+#   BrainzLab Rails automatically detects configuration from:
+#   - Rails.application.credentials.brainzlab[:secret_key]
+#   - ENV['BRAINZLAB_SECRET_KEY']
+#   - Rails.env for environment
+#   - Rails application name for service name
+#   - Socket.gethostname for hostname
+#
+# To add your secret key to Rails credentials:
+#   EDITOR="code --wait" bin/rails credentials:edit
+#
+#   brainzlab:
+#     secret_key: your_secret_key_here
+#
+# Or use environment variables:
+#   export BRAINZLAB_SECRET_KEY=your_secret_key
+#
+<% unless minimal_config? %>
+# BrainzLab.configure do |config|
+#   # ============================================================================
+#   # Authentication (usually auto-detected, uncomment to override)
+#   # ============================================================================
+#
+#   # Secret key - auto-detected from credentials or ENV
+#   # config.secret_key = ENV['BRAINZLAB_SECRET_KEY']
+#
+#   # App name for auto-provisioning (auto-detected from Rails app name)
+#   # config.app_name = "<%= app_name %>"
+#
+#   # Service name (auto-detected from Rails app name)
+#   # config.service = "<%= app_name %>"
+#
+#   # Environment (auto-detected from Rails.env)
+#   # config.environment = Rails.env
+#
+#   # ============================================================================
+#   # Products (all enabled by default)
+#   # ============================================================================
+#
+#   # config.recall_enabled = true  # Logging
+#   # config.reflex_enabled = true  # Error tracking
+#   # config.pulse_enabled = true   # APM/Tracing
+#   # config.flux_enabled = true    # Metrics
+#
+#   # ============================================================================
+#   # Recall - Logging
+#   # ============================================================================
+#
+#   # Master key for auto-provisioning (auto-detected from credentials)
+#   # config.recall_master_key = ENV['RECALL_MASTER_KEY']
+#
+#   # Minimum log level to send
+#   # config.recall_min_level = :debug  # :debug, :info, :warn, :error, :fatal
+#
+#   # ============================================================================
+#   # Reflex - Error Tracking
+#   # ============================================================================
+#
+#   # Master key for auto-provisioning (auto-detected from credentials)
+#   # config.reflex_master_key = ENV['REFLEX_MASTER_KEY']
+#
+#   # Exceptions to exclude
+#   # config.reflex_excluded_exceptions = [
+#   #   'ActionController::RoutingError',
+#   #   'ActionController::InvalidAuthenticityToken',
+#   #   'ActiveRecord::RecordNotFound'
+#   # ]
+#
+#   # ============================================================================
+#   # Pulse - APM/Tracing
+#   # ============================================================================
+#
+#   # Master key for auto-provisioning (auto-detected from credentials)
+#   # config.pulse_master_key = ENV['PULSE_MASTER_KEY']
+#
+#   # Sample rate (1.0 = 100%, 0.1 = 10%)
+#   # config.pulse_sample_rate = 1.0
+#
+#   # Paths to exclude from tracing
+#   # config.pulse_excluded_paths = %w[/health /ping /up /assets]
+#
+#   # ============================================================================
+#   # Filtering
+#   # ============================================================================
+#
+#   # Fields to scrub from logs and errors
+#   # config.scrub_fields = %i[password password_confirmation token api_key secret credit_card]
+# end
+
+# ============================================================================
+# Rails-specific Configuration (optional)
+# ============================================================================
+#
+# Configure via Rails config (alternative to BrainzLab.configure):
+#
+# Rails.application.configure do
+#   # Analyzer settings
+#   config.brainzlab_rails.n_plus_one_detection = true
+#   config.brainzlab_rails.slow_query_threshold_ms = 100
+#   config.brainzlab_rails.cache_efficiency_tracking = true
+#
+#   # Sampling (0.0 to 1.0)
+#   config.brainzlab_rails.sample_rate = 1.0
+#
+#   # Ignored actions (controller#action format)
+#   config.brainzlab_rails.ignored_actions = ['HealthController#check']
+#
+#   # Ignored job classes
+#   config.brainzlab_rails.ignored_job_classes = ['CleanupJob']
+# end
+<% else %>
+# Minimal configuration - everything is auto-detected!
+# Uncomment and modify only what you need to override.
+#
+# BrainzLab.configure do |config|
+#   # Override auto-detected values if needed:
+#   # config.secret_key = ENV['BRAINZLAB_SECRET_KEY']
+#   # config.service = 'my-custom-service-name'
+#   # config.environment = 'staging'
+# end
+<% end %>
