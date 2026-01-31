@@ -4,6 +4,10 @@ module BrainzLab
   module Rails
     # Railtie for automatic Rails integration
     # Automatically starts instrumentation when Rails boots
+    # Supports zero-config setup with auto-detection from:
+    # - Rails.application.credentials.brainzlab[:secret_key]
+    # - ENV['BRAINZLAB_SECRET_KEY']
+    # - Auto-detected service name, environment, and hostname
     class Railtie < ::Rails::Railtie
       config.brainzlab_rails = ActiveSupport::OrderedOptions.new
 
@@ -12,6 +16,12 @@ module BrainzLab
         ActiveSupport.on_load(:action_view) do
           include BrainzLab::Rails::ViewHelpers
         end
+      end
+
+      # Auto-configure SDK with zero-config defaults BEFORE user initializers
+      # This allows user initializers to override if needed
+      initializer 'brainzlab_rails.auto_configure', before: :load_config_initializers do |_app|
+        auto_configure_sdk!
       end
 
       # Initialize after Rails and BrainzLab SDK are configured
@@ -61,37 +71,91 @@ module BrainzLab
           ::Rails.logger.info '[BrainzLab::Rails] Instrumentation started (SDK Rails events delegated)'
         else
           ::Rails.logger.warn '[BrainzLab::Rails] BrainzLab SDK not configured, skipping instrumentation'
+          ::Rails.logger.info '[BrainzLab::Rails] To enable, set BRAINZLAB_SECRET_KEY or add to Rails credentials:'
+          ::Rails.logger.info '[BrainzLab::Rails]   rails credentials:edit'
+          ::Rails.logger.info '[BrainzLab::Rails]   brainzlab:'
+          ::Rails.logger.info '[BrainzLab::Rails]     secret_key: your_key_here'
         end
       end
 
-      def self.sdk_configured?
-        config = BrainzLab.configuration
-        return false unless config
+      class << self
+        # Auto-configure the SDK with zero-config defaults
+        # Called before user initializers load, so users can override
+        def auto_configure_sdk!
+          sdk_config = BrainzLab.configuration
 
-        # Check for secret_key (set directly or by auto-provisioning)
-        return true if config.secret_key.to_s.strip.length.positive?
+          # Auto-detect and set secret key if not already set
+          if sdk_config.secret_key.to_s.strip.empty?
+            detected_key = Configuration.detect_secret_key
+            sdk_config.secret_key = detected_key if detected_key
+          end
 
-        # Check if any product can auto-provision
-        # Products with auto_provision + master_key will provision on first use
-        products_with_auto = %i[recall reflex pulse flux]
-        has_auto_provision = products_with_auto.any? do |product|
-          enabled = config.send("#{product}_enabled")
-          can_provision = config.send("#{product}_auto_provision") &&
-                          config.send("#{product}_master_key").to_s.strip.length.positive? &&
-                          config.app_name.to_s.strip.length.positive?
-          enabled && can_provision
+          # Auto-detect and set environment
+          sdk_config.environment ||= Configuration.detect_environment
+
+          # Auto-detect and set service name
+          if sdk_config.service.to_s.strip.empty?
+            detected_service = Configuration.detect_service_name
+            sdk_config.service = detected_service if detected_service
+          end
+
+          # Auto-detect and set hostname
+          if sdk_config.host.to_s.strip.empty?
+            detected_host = Configuration.detect_hostname
+            sdk_config.host = detected_host if detected_host
+          end
+
+          # Auto-detect and set app name for auto-provisioning
+          if sdk_config.app_name.to_s.strip.empty?
+            detected_app_name = Configuration.detect_app_name
+            sdk_config.app_name = detected_app_name if detected_app_name
+          end
+
+          # Auto-detect master keys from credentials
+          master_keys = Configuration.detect_master_keys
+          sdk_config.recall_master_key ||= master_keys[:recall_master_key]
+          sdk_config.reflex_master_key ||= master_keys[:reflex_master_key]
+          sdk_config.pulse_master_key ||= master_keys[:pulse_master_key]
+          sdk_config.flux_master_key ||= master_keys[:flux_master_key]
+          # Note: nerve_master_key is handled by SDK directly
+
+          BrainzLab.debug_log('[BrainzLab::Rails] Auto-configured SDK from Rails environment')
+          BrainzLab.debug_log("  environment: #{sdk_config.environment}")
+          BrainzLab.debug_log("  service: #{sdk_config.service}")
+          BrainzLab.debug_log("  host: #{sdk_config.host}")
+          BrainzLab.debug_log("  app_name: #{sdk_config.app_name}")
+          BrainzLab.debug_log("  secret_key: #{sdk_config.secret_key.to_s.empty? ? '(not set)' : '***'}")
         end
-        return true if has_auto_provision
 
-        # Check for direct API keys
-        direct_keys = {
-          reflex: :reflex_api_key,
-          pulse: :pulse_api_key,
-          flux: :flux_api_key
-        }
-        direct_keys.any? do |product, key_method|
-          config.send("#{product}_enabled") &&
-            config.send(key_method).to_s.strip.length.positive?
+        def sdk_configured?
+          config = BrainzLab.configuration
+          return false unless config
+
+          # Check for secret_key (set directly or by auto-provisioning)
+          return true if config.secret_key.to_s.strip.length.positive?
+
+          # Check if any product can auto-provision
+          # Products with auto_provision + master_key will provision on first use
+          products_with_auto = %i[recall reflex pulse flux]
+          has_auto_provision = products_with_auto.any? do |product|
+            enabled = config.send("#{product}_enabled")
+            can_provision = config.send("#{product}_auto_provision") &&
+                            config.send("#{product}_master_key").to_s.strip.length.positive? &&
+                            config.app_name.to_s.strip.length.positive?
+            enabled && can_provision
+          end
+          return true if has_auto_provision
+
+          # Check for direct API keys
+          direct_keys = {
+            reflex: :reflex_api_key,
+            pulse: :pulse_api_key,
+            flux: :flux_api_key
+          }
+          direct_keys.any? do |product, key_method|
+            config.send("#{product}_enabled") &&
+              config.send(key_method).to_s.strip.length.positive?
+          end
         end
       end
 
