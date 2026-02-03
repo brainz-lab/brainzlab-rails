@@ -22,3 +22,6 @@ Gemfile.lock
 
 # OS
 .DS_Store
+
+# Secrets (NEVER commit)
+.secrets.md
